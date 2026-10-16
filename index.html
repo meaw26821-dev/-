@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ห้องทดลองเสมือน 3D: ปฏิกิริยาเคมี ม.3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg1:#06142a;--bg2:#0d2d55;--bg3:#12467a;--accent:#4cc9f0;--gold:#ffd166;--green:#5eead4;--pink:#ff8fa3;--text:#eaf6ff;--muted:#a9c4dd;--glass:rgba(255,255,255,.08);--glass2:rgba(255,255,255,.14);--line:rgba(255,255,255,.18)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{font-family:"Prompt","Noto Sans Thai",Tahoma,sans-serif;color:var(--text);background:radial-gradient(1200px 700px at 20% 10%,var(--bg3),var(--bg2) 45%,var(--bg1));line-height:1.6;overflow:hidden}
+button{font-family:inherit;cursor:pointer}
+.app{display:grid;grid-template-columns:minmax(0,1fr) clamp(380px,34vw,470px);height:100vh;height:100dvh;gap:14px;padding:14px}
+.stage{position:relative;border-radius:26px;overflow:hidden;background:radial-gradient(900px 600px at 50% 30%,rgba(76,201,240,.22),rgba(13,45,85,.55) 55%,rgba(6,20,42,.9));border:1px solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.04);min-height:420px}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none;touch-action:none}
+.stage-top{position:absolute;left:16px;right:16px;top:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;pointer-events:none;z-index:5}
+.brand{display:flex;gap:10px;align-items:center;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:8px 14px 8px 10px;border-radius:16px;pointer-events:auto}
+.brand .logo{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:linear-gradient(135deg,#4cc9f0,#3a86ff);box-shadow:0 6px 18px rgba(58,134,255,.5)}
+.brand b{display:block;font-weight:600;font-size:.98rem;line-height:1.2}
+.brand small{color:var(--muted);font-size:.76rem}
+.tools{display:flex;gap:8px;pointer-events:auto}
+.tool{width:42px;height:42px;border-radius:14px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--text);font-size:18px;transition:.2s}
+.tool:hover{background:var(--glass2);transform:translateY(-2px)}
+.hotspots{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
+.hotspot{position:absolute;left:0;top:0;pointer-events:auto;border:0;background:none;padding:0;display:flex;align-items:center;gap:8px;color:var(--text);will-change:transform;transition:opacity .25s}
+.hotspot.hide{opacity:0;pointer-events:none}
+.hotspot .dot{position:relative;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:15px;background:rgba(10,30,60,.78);border:2px solid var(--hc,#4cc9f0);box-shadow:0 0 18px var(--hc,#4cc9f0);transition:transform .2s}
+.hotspot .dot::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid var(--hc,#4cc9f0);opacity:.7;animation:ping 2s ease-out infinite}
+.hotspot:hover .dot,.hotspot:focus-visible .dot,.hotspot.active .dot{transform:scale(1.18)}
+.hotspot .tag{font-size:.76rem;padding:2px 10px;border-radius:99px;background:rgba(8,24,48,.78);border:1px solid var(--line);backdrop-filter:blur(8px);white-space:nowrap}
+@keyframes ping{0%{transform:scale(.8);opacity:.8}80%,100%{transform:scale(1.6);opacity:0}}
+.infocard{position:absolute;left:18px;bottom:18px;width:min(370px,calc(100% - 36px));z-index:6;padding:16px 18px 16px 20px;border-radius:20px;background:rgba(8,24,48,.72);border:1px solid var(--line);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);box-shadow:0 18px 40px rgba(0,0,0,.45);opacity:0;transform:translateY(18px) scale(.97);pointer-events:none;overflow:hidden}
+.infocard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--ac,#4cc9f0);box-shadow:0 0 16px var(--ac,#4cc9f0)}
+.infocard.show{opacity:1;transform:none;pointer-events:auto;animation:cardIn .45s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes cardIn{from{opacity:0;transform:translateY(22px) scale(.94)}to{opacity:1;transform:none}}
+.ic-head{display:flex;gap:12px;align-items:center;margin-bottom:6px}
+.ic-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-size:22px;background:rgba(255,255,255,.1);flex:none}
+.ic-head h3{margin:0;font-size:1.05rem;font-weight:600;line-height:1.25}
+.ic-tag{display:inline-block;margin-top:2px;font-size:.72rem;padding:1px 9px;border-radius:99px;background:var(--ac,#4cc9f0);color:#06223a;font-weight:600}
+.ic-close{position:absolute;right:10px;top:10px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:var(--text);font-size:14px}
+.ic-close:hover{background:rgba(255,255,255,.22)}
+.ic-body{font-size:.9rem;color:#dcecfa;margin:8px 0 0}
+.ic-tip{margin-top:10px;font-size:.82rem;padding:8px 11px;border-radius:12px;background:rgba(255,255,255,.07);color:var(--gold)}
+.stage-hint{position:absolute;right:16px;bottom:16px;z-index:3;font-size:.74rem;color:var(--muted);background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:6px 12px;border-radius:99px;max-width:46%;text-align:right;pointer-events:none}
+.legend{position:absolute;right:16px;top:70px;z-index:3;display:flex;flex-direction:column;gap:6px;font-size:.76rem;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:9px 12px;border-radius:14px;pointer-events:none}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:7px;vertical-align:-1px}
+.loading{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:30px;z-index:20;background:radial-gradient(circle at 50% 40%,#0d2d55,#06142a);transition:opacity .6s}
+.loading.done{opacity:0;pointer-events:none}
+.spinner{width:46px;height:46px;border-radius:50%;border:4px solid rgba(255,255,255,.18);border-top-color:var(--accent);margin:0 auto 14px;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.panel{display:flex;flex-direction:column;min-height:0;border-radius:26px;background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.05));border:1px solid var(--line);backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);box-shadow:0 24px 60px rgba(0,0,0,.4);overflow:hidden}
+.p-head{padding:18px 20px 10px}
+.p-head h1{margin:0;font-size:1.32rem;font-weight:600;line-height:1.3}
+.p-head p{margin:2px 0 0;color:var(--muted);font-size:.84rem}
+details.obj{margin-top:10px;background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-size:.84rem}
+details.obj summary{cursor:pointer;font-weight:500;list-style:none}
+details.obj summary::-webkit-details-marker{display:none}
+details.obj summary::after{content:"▾";float:right;color:var(--muted)}
+details.obj[open] summary::after{content:"▴"}
+details.obj ul{margin:8px 0 4px;padding-left:20px;color:#d3e6f6}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 16px 0;padding:5px;background:rgba(0,0,0,.22);border-radius:16px}
+.tab{border:0;background:none;color:var(--muted);padding:9px 6px;border-radius:12px;font-size:.88rem;font-weight:500;transition:.25s}
+.tab:hover{color:#fff}
+.tab[aria-selected="true"]{background:linear-gradient(135deg,#3a86ff,#4cc9f0);color:#fff;box-shadow:0 6px 16px rgba(58,134,255,.45)}
+.p-body{flex:1;overflow-y:auto;padding:14px 18px 20px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent}
+.p-body::-webkit-scrollbar{width:8px}
+.p-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:9px}
+.sec{display:none}
+.sec.on{display:block;animation:fadeUp .45s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.card{background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:18px;padding:14px 15px;margin-bottom:12px}
+.card h2{margin:0 0 8px;font-size:1rem;font-weight:600}
+.ctl{margin-bottom:14px}
+.ctl:last-child{margin-bottom:0}
+.ctl-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500;font-size:.92rem;margin-bottom:8px}
+.ctl-top .val{font-weight:600;padding:1px 10px;border-radius:99px;background:rgba(255,255,255,.14);font-size:.84rem}
+.ctl small{display:block;margin-top:7px;color:var(--muted);font-size:.78rem;line-height:1.5}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--c,#4cc9f0) var(--v,50%),rgba(255,255,255,.16) var(--v,50%));outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--c,#4cc9f0);box-shadow:0 2px 10px rgba(0,0,0,.4)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--c,#4cc9f0);box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.hint{font-size:.84rem;padding:10px 12px;border-radius:14px;background:rgba(76,201,240,.12);border-left:4px solid var(--accent);color:#e1f3ff;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:14px;padding:9px 6px;text-align:center}
+.stat span{display:block;font-size:.7rem;color:var(--muted);line-height:1.3;min-height:2.1em}
+.stat strong{display:block;font-size:1.12rem;color:#fff;font-weight:600}
+.bar{height:10px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#34d399,#5eead4);transition:width .4s}
+.prog-label{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin-bottom:6px}
+.factor{display:grid;grid-template-columns:78px 1fr 40px;align-items:center;gap:8px;font-size:.8rem;margin-top:7px}
+.factor .bar i{transition:width .3s}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{flex:1;border:0;border-radius:13px;padding:10px 14px;font-weight:500;font-size:.88rem;color:#fff;background:linear-gradient(135deg,#3a86ff,#4cc9f0);box-shadow:0 6px 16px rgba(58,134,255,.35);transition:.2s}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.08)}
+.btn.ghost{background:rgba(255,255,255,.12);box-shadow:none;border:1px solid var(--line)}
+.btn.green{background:linear-gradient(135deg,#10b981,#5eead4);color:#06322a;box-shadow:0 6px 16px rgba(16,185,129,.35)}
+.eq{text-align:center;padding:14px 10px;border-radius:16px;background:linear-gradient(135deg,rgba(58,134,255,.35),rgba(76,201,240,.2));border:1px solid var(--line);margin-bottom:10px}
+.eq .th{font-size:1.02rem;font-weight:600}
+.eq .ch{font-size:1.3rem;margin-top:4px;letter-spacing:1px;color:var(--gold);font-weight:600}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.chip{padding:8px 6px;border-radius:12px;text-align:center;font-size:.76rem;line-height:1.35;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--muted);transition:.3s}
+.chip.on{background:linear-gradient(135deg,#3a86ff,#4cc9f0);color:#fff;border-color:transparent;transform:translateY(-2px);box-shadow:0 8px 18px rgba(58,134,255,.4)}
+table.cnt{width:100%;border-collapse:collapse;font-size:.84rem;text-align:center}
+table.cnt th,table.cnt td{padding:7px 4px;border-bottom:1px solid var(--line)}
+table.cnt th{color:var(--muted);font-weight:500}
+.ok{color:#5eead4;font-weight:600}
+.gloss{display:grid;gap:8px}
+.gloss div{padding:9px 12px;border-radius:13px;background:rgba(255,255,255,.07);font-size:.84rem}
+.gloss b{color:var(--gold)}
+fieldset.qa{border:0;border-top:1px solid var(--line);margin:0;padding:12px 0}
+fieldset.qa:first-of-type{border-top:0;padding-top:2px}
+fieldset.qa legend{font-weight:600;font-size:.92rem;padding:0;margin-bottom:8px;line-height:1.5;float:left;width:100%}
+fieldset.qa legend+*{clear:both}
+.opt{display:flex;gap:10px;align-items:center;padding:9px 12px;margin-bottom:6px;border-radius:13px;background:rgba(255,255,255,.07);border:1px solid transparent;cursor:pointer;font-size:.86rem;transition:.2s}
+.opt:hover{background:rgba(255,255,255,.13)}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt .mark{width:18px;height:18px;border-radius:50%;border:2px solid var(--muted);flex:none;transition:.2s}
+.opt:has(input:checked){border-color:var(--accent);background:rgba(76,201,240,.16)}
+.opt:has(input:checked) .mark{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 45%,transparent 50%)}
+.opt.correct{border-color:#34d399;background:rgba(52,211,153,.2)}
+.opt.wrong{border-color:#fb7185;background:rgba(251,113,133,.2)}
+.exp{display:none;font-size:.82rem;color:#d3e6f6;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.06);margin-top:2px}
+.exp.show{display:block;animation:fadeUp .35s ease}
+.score{display:none;align-items:center;gap:14px;padding:14px;border-radius:18px;background:linear-gradient(135deg,rgba(58,134,255,.3),rgba(94,234,212,.2));border:1px solid var(--line);margin-bottom:12px}
+.score.show{display:flex;animation:fadeUp .4s ease}
+.ring{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;flex:none;background:conic-gradient(var(--green) calc(var(--p,0)*1%),rgba(255,255,255,.15) 0)}
+.ring span{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:#0d2d55;font-weight:700;font-size:1.1rem}
+.note{font-size:.76rem;color:var(--muted);margin-top:12px;line-height:1.55}
+@media(max-width:900px){
+body{overflow:auto}
+.app{grid-template-columns:1fr;height:auto;padding:10px;gap:10px}
+.stage{height:60vh;min-height:380px}
+.panel{overflow:visible}
+.p-body{overflow:visible}
+.hotspot .tag{display:none}
+.stage-hint{display:none}
+.legend{top:66px}
+}
+@media(max-width:520px){.brand small{display:none}.legend{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<section class="stage" id="stage">
+<div class="stage-top">
+<div class="brand"><div class="logo">🧪</div><div><b>ห้องทดลองเสมือน 3D</b><small>ปฏิกิริยาเคมี • วิทยาศาสตร์ ม.3</small></div></div>
+<div class="tools">
+<button class="tool" id="toolPause" title="หยุด / เล่นภาพเคลื่อนไหว" aria-label="หยุดหรือเล่นภาพเคลื่อนไหว">⏸</button>
+<button class="tool" id="toolView" title="รีเซ็ตมุมกล้อง" aria-label="รีเซ็ตมุมกล้อง">🎯</button>
+<button class="tool" id="toolFull" title="เต็มหน้าจอ" aria-label="เต็มหน้าจอ">⛶</button>
+</div>
+</div>
+<div class="legend" id="legend"></div>
+<div class="hotspots" id="hotspots"></div>
+<div class="infocard" id="infocard" role="dialog" aria-live="polite">
+<button class="ic-close" id="icClose" aria-label="ปิดการ์ดข้อมูล">✕</button>
+<div class="ic-head"><div class="ic-icon" id="icIcon"></div><div><h3 id="icTitle"></h3><span class="ic-tag" id="icTag"></span></div></div>
+<p class="ic-body" id="icBody"></p>
+<div class="ic-tip" id="icTip"></div>
+</div>
+<div class="stage-hint">🖱️ ลากเพื่อหมุน • คลิกขวาลากเพื่อแพน • ลูกกลิ้งเพื่อซูม • คลิกจุดเรืองแสงเพื่อดูข้อมูล</div>
+<div class="loading" id="loading"><div><div class="spinner"></div><div id="loadingText">กำลังโหลดฉาก 3D…</div></div></div>
+</section>
+<aside class="panel">
+<div class="p-head">
+<h1>🧪 ปฏิกิริยาเคมี: อนุภาคชนกันอย่างไร?</h1>
+<p>ทดลองปรับปัจจัย แล้วสังเกตการชนของอนุภาคและอัตราการเกิดปฏิกิริยาในแบบ 3 มิติ</p>
+<details class="obj">
+<summary>🎯 จุดประสงค์การเรียนรู้</summary>
+<ul>
+<li>ทดลองและสังเกตว่าความร้อน ความดัน และพื้นที่ผิวสัมผัสส่งผลต่ออัตราการเกิดปฏิกิริยาอย่างไร</li>
+<li>วิเคราะห์แบบจำลองการจัดเรียงตัวใหม่ของอะตอม และอธิบายด้วยสมการข้อความได้</li>
+</ul>
+</details>
+</div>
+<div class="tabs" role="tablist">
+<button class="tab" role="tab" aria-selected="true" data-tab="lab">🔬 ห้องทดลอง</button>
+<button class="tab" role="tab" aria-selected="false" data-tab="atom">⚛️ อะตอม</button>
+<button class="tab" role="tab" aria-selected="false" data-tab="quiz">📝 ทดสอบ</button>
+</div>
+<div class="p-body">
+<div class="sec on" id="tab-lab">
+<div class="card">
+<h2>🎚️ ปรับตัวแปรการทดลอง</h2>
+<div class="ctl"><div class="ctl-top"><label for="heat">🔥 ความร้อน / อุณหภูมิ</label><span class="val" id="heatVal">50%</span></div><input id="heat" type="range" min="0" max="100" value="50" style="--c:#ff8a4c"><small>อุณหภูมิสูงขึ้น → อนุภาคเคลื่อนที่เร็วขึ้น โดยทั่วไปจึงชนกันถี่ขึ้นและมีพลังงานมากขึ้น</small></div>
+<div class="ctl"><div class="ctl-top"><label for="pressure">🗜️ ความดัน (สำหรับแก๊ส)</label><span class="val" id="pressureVal">50%</span></div><input id="pressure" type="range" min="0" max="100" value="50" style="--c:#ffd166"><small>ความดันสูงขึ้นในปริมาตรที่ลดลง → อนุภาคแก๊สอยู่ใกล้กันขึ้นและชนกันบ่อยขึ้น</small></div>
+<div class="ctl"><div class="ctl-top"><label for="surface">🧊 พื้นที่ผิวสัมผัส</label><span class="val" id="surfaceVal">50%</span></div><input id="surface" type="range" min="0" max="100" value="50" style="--c:#5eead4"><small>สารของแข็งที่บดให้ละเอียดมีพื้นที่ผิวสัมผัสมากขึ้น • <b id="surfaceNote" style="color:#5eead4"></b></small></div>
+</div>
+<div class="hint" id="hint" aria-live="polite">ปรับแถบเลื่อนเพื่อดูการเปลี่ยนแปลงของอนุภาคและอัตราการเกิดปฏิกิริยา</div>
+<div class="stats">
+<div class="stat"><span>อัตราโดยประมาณ</span><strong id="rate">กลาง</strong></div>
+<div class="stat"><span>การชนที่มีประสิทธิผล</span><strong id="collisions">0</strong></div>
+<div class="stat"><span>เวลาเทียบเคียง</span><strong id="time">—</strong></div>
+</div>
+<div class="card">
+<div class="prog-label"><span>ความคืบหน้าของปฏิกิริยา (สารผลิตภัณฑ์)</span><b id="progText">0%</b></div>
+<div class="bar"><i id="progBar"></i></div>
+<div style="margin-top:12px;font-size:.8rem;color:var(--muted)">ผลสัมพัทธ์ของแต่ละตัวแปรในแบบจำลอง</div>
+<div class="factor"><span>ความร้อน</span><div class="bar"><i id="fHeat" style="background:linear-gradient(90deg,#ff8a4c,#ffb86b)"></i></div><b id="fHeatV">—</b></div>
+<div class="factor"><span>ความดัน</span><div class="bar"><i id="fPress" style="background:linear-gradient(90deg,#ffd166,#ffe9a3)"></i></div><b id="fPressV">—</b></div>
+<div class="factor"><span>พื้นที่ผิว</span><div class="bar"><i id="fSurf"></i></div><b id="fSurfV">—</b></div>
+</div>
+<div class="btnrow"><button class="btn" id="pause">⏸ หยุดภาพเคลื่อนไหว</button><button class="btn ghost" id="reset">↺ เริ่มใหม่</button></div>
+<p class="note">แบบจำลองนี้ใช้อนุภาคสมมติและแสดงแนวโน้มเชิงคุณภาพ ไม่ใช่ผลการทดลองจริงหรือค่าคงที่ทางวิทยาศาสตร์ ผลของความดันเด่นชัดกับปฏิกิริยาที่เกี่ยวข้องกับแก๊ส และผลของแต่ละปัจจัยขึ้นกับชนิดของสารและเงื่อนไขการทดลองจริง ควรทดลองจริงภายใต้การดูแลของครูและปฏิบัติตามกฎความปลอดภัย</p>
+</div>
+<div class="sec" id="tab-atom">
+<div class="card">
+<h2>⚛️ อะตอมจัดเรียงตัวใหม่อย่างไร?</h2>
+<p style="margin:0;font-size:.86rem">เมื่อเกิดปฏิกิริยาเคมี <b>พันธะเคมีเดิมบางส่วนแตกออก และเกิดพันธะใหม่</b> อะตอมจึงจัดเรียงตัวใหม่เป็นสารผลิตภัณฑ์ อะตอมไม่ได้หายไปหรือเกิดขึ้นใหม่ในการเกิดปฏิกิริยาเคมีทั่วไป จำนวนอะตอมของแต่ละธาตุก่อนและหลังปฏิกิริยาจึงเท่ากัน</p>
+</div>
+<div class="eq"><div class="th">ไฮโดรเจน + ออกซิเจน → น้ำ</div><div class="ch">2H₂ + O₂ → 2H₂O</div></div>
+<div class="chips"><div class="chip on" id="chip0">① สารตั้งต้น<br>2H₂ + O₂</div><div class="chip" id="chip1">② พันธะแตก<br>พันธะใหม่เกิด</div><div class="chip" id="chip2">③ สารผลิตภัณฑ์<br>2H₂O</div></div>
+<div class="card">
+<div class="ctl"><div class="ctl-top"><label for="molSlider">🎞️ ความคืบหน้าของปฏิกิริยา</label><span class="val" id="molVal">0%</span></div><input id="molSlider" type="range" min="0" max="100" value="0" style="--c:#4cc9f0"></div>
+<div class="btnrow"><button class="btn green" id="molPlay">▶ เล่นภาพเคลื่อนไหว</button><button class="btn ghost" id="molReset">↺ กลับไปเริ่มต้น</button></div>
+</div>
+<div class="card">
+<h2>🔢 นับจำนวนอะตอม</h2>
+<table class="cnt"><tr><th>ธาตุ</th><th>ก่อนปฏิกิริยา</th><th>หลังปฏิกิริยา</th><th>เท่ากัน?</th></tr><tr><td>H</td><td>4</td><td>4</td><td class="ok">✓</td></tr><tr><td>O</td><td>2</td><td>2</td><td class="ok">✓</td></tr></table>
+</div>
+<div class="card">
+<h2>📖 คำศัพท์สำคัญ</h2>
+<div class="gloss">
+<div><b>สารตั้งต้น</b> = สารก่อนเกิดปฏิกิริยา</div>
+<div><b>สารผลิตภัณฑ์</b> = สารที่เกิดขึ้นใหม่</div>
+<div><b>อัตราการเกิดปฏิกิริยา</b> = ความเร็วที่สารตั้งต้นเปลี่ยนเป็นผลิตภัณฑ์</div>
+<div><b>การชนที่มีประสิทธิผล</b> = การชนที่มีพลังงานและทิศทางเหมาะสมจนเกิดปฏิกิริยา</div>
+</div>
+</div>
+</div>
+<div class="sec" id="tab-quiz">
+<div class="card"><h2>📝 แบบทดสอบท้ายกิจกรรม 5 ข้อ</h2><p style="margin:0;font-size:.82rem;color:var(--muted)">เลือกคำตอบแล้วกด “ตรวจคำตอบ” ระบบจะแสดงคะแนนและเฉลยพร้อมคำอธิบาย</p></div>
+<div class="score" id="score" aria-live="polite"><div class="ring" id="ring"><span id="scoreNum">0/5</span></div><div><b id="scoreTitle"></b><div style="font-size:.82rem;color:#d3e6f6" id="scoreMsg"></div></div></div>
+<form class="card" id="quizForm" onsubmit="return false"></form>
+<div class="btnrow"><button class="btn" id="qCheck">✔ ตรวจคำตอบ</button><button class="btn ghost" id="qShow">💡 แสดงเฉลย</button><button class="btn ghost" id="qReset">↺ ทำใหม่</button></div>
+</div>
+</div>
+</aside>
+</div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const $$=s=>Array.from(document.querySelectorAll(s));
+const loading=$('#loading');
+if(typeof THREE==='undefined'||!THREE.OrbitControls){
+loading.innerHTML='<div>ไม่สามารถโหลดไลบรารี Three.js ได้<br>กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้านี้</div>';
+return;
+}
+const stage=$('#stage');
+const W=10,D=6,NP=36,BLOCK=2;
+const S={heat:50,pressure:50,surface:50,running:true,mode:'lab',collisions:0,molP:0,molPlay:false,molDir:1,doneTimer:0,pieces:0};
+let Hcur=7.4-0.5*3.8,Htarget=Hcur,blockK=0,blockPop=0,tween=null;
+
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.08;
+stage.insertBefore(renderer.domElement,stage.firstChild);
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,1,0.1,200);
+const PRESET={lab:{pos:new THREE.Vector3(13,8.5,15),target:new THREE.Vector3(0,2.8,0)},mol:{pos:new THREE.Vector3(3,5.4,15.5),target:new THREE.Vector3(0,3.1,0)}};
+camera.position.copy(PRESET.lab.pos);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.dampingFactor=0.07;
+controls.minDistance=6;
+controls.maxDistance=40;
+controls.maxPolarAngle=Math.PI*0.52;
+controls.enablePan=true;
+controls.screenSpacePanning=true;
+controls.target.copy(PRESET.lab.target);
+controls.update();
+
+scene.add(new THREE.AmbientLight(0xbfd8ff,0.55));
+scene.add(new THREE.HemisphereLight(0xcfe8ff,0x1a2b4a,0.6));
+const sun=new THREE.DirectionalLight(0xffffff,1.1);
+sun.position.set(8,14,6);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-14;
+sun.shadow.camera.right=14;
+sun.shadow.camera.top=14;
+sun.shadow.camera.bottom=-14;
+sun.shadow.camera.near=1;
+sun.shadow.camera.far=40;
+sun.shadow.bias=-0.0004;
+sun.shadow.normalBias=0.02;
+scene.add(sun);
+const rim=new THREE.DirectionalLight(0x6fb7ff,0.55);
+rim.position.set(-10,6,-8);
+scene.add(rim);
+const glow=new THREE.PointLight(0xff9a3c,0,16);
+glow.position.set(0,0.8,0);
+scene.add(glow);
+
+const table=new THREE.Mesh(new THREE.CylinderGeometry(11,11,0.5,64),new THREE.MeshStandardMaterial({color:0x13294a,roughness:0.6,metalness:0.25}));
+table.position.y=-0.7;
+table.receiveShadow=true;
+scene.add(table);
+const ring=new THREE.Mesh(new THREE.RingGeometry(10.5,10.9,96),new THREE.MeshBasicMaterial({color:0x4cc9f0,transparent:true,opacity:0.55,side:THREE.DoubleSide}));
+ring.rotation.x=-Math.PI/2;
+ring.position.y=-0.44;
+scene.add(ring);
+const grid=new THREE.GridHelper(21,21,0x2c5b8a,0x1b3c63);
+grid.position.y=-0.44;
+grid.material.transparent=true;
+grid.material.opacity=0.35;
+scene.add(grid);
+
+const dustGeo=new THREE.BufferGeometry();
+const dustPos=new Float32Array(360*3);
+for(let i=0;i<360;i++){
+const r=9+Math.random()*16,a=Math.random()*Math.PI*2;
+dustPos[i*3]=Math.cos(a)*r;
+dustPos[i*3+1]=Math.random()*16-1;
+dustPos[i*3+2]=Math.sin(a)*r;
+}
+dustGeo.setAttribute('position',new THREE.BufferAttribute(dustPos,3));
+const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0x9fd8ff,size:0.09,transparent:true,opacity:0.6,depthWrite:false}));
+scene.add(dust);
+
+const labGroup=new THREE.Group();
+scene.add(labGroup);
+
+const slab=new THREE.Mesh(new THREE.BoxGeometry(W+0.4,0.2,D+0.4),new THREE.MeshStandardMaterial({color:0x8fa6c4,roughness:0.35,metalness:0.6}));
+slab.position.y=-0.1;
+slab.receiveShadow=true;
+slab.castShadow=true;
+labGroup.add(slab);
+
+const heaterMat=new THREE.MeshStandardMaterial({color:0x2a5f8f,emissive:0x2a5f8f,emissiveIntensity:0.5,roughness:0.4,metalness:0.4});
+const heater=new THREE.Mesh(new THREE.BoxGeometry(W+0.7,0.18,D+0.7),heaterMat);
+heater.position.y=-0.3;
+heater.userData.info='heater';
+labGroup.add(heater);
+
+const wallMat=new THREE.MeshPhongMaterial({color:0x9fd8ff,transparent:true,opacity:0.09,shininess:120,specular:0xffffff,depthWrite:false});
+const wall=new THREE.Mesh(new THREE.BoxGeometry(W,1,D),wallMat);
+labGroup.add(wall);
+const wallEdges=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(W,1,D)),new THREE.LineBasicMaterial({color:0xbfe9ff,transparent:true,opacity:0.75}));
+labGroup.add(wallEdges);
+
+const lidGroup=new THREE.Group();
+const metal=new THREE.MeshStandardMaterial({color:0x9db4d0,roughness:0.28,metalness:0.8});
+const lidSlab=new THREE.Mesh(new THREE.BoxGeometry(W+0.15,0.3,D+0.15),metal);
+lidSlab.position.y=0.15;
+const lidRod=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.25,3.2,24),metal);
+lidRod.position.y=1.9;
+const lidHandle=new THREE.Mesh(new THREE.CylinderGeometry(0.85,0.85,0.26,32),new THREE.MeshStandardMaterial({color:0xffd166,roughness:0.35,metalness:0.5}));
+lidHandle.position.y=3.6;
+[lidSlab,lidRod,lidHandle].forEach(m=>{m.castShadow=true;m.userData.info='piston';lidGroup.add(m);});
+labGroup.add(lidGroup);
+
+const blockGroup=new THREE.Group();
+labGroup.add(blockGroup);
+const blockMat=new THREE.MeshStandardMaterial({color:0xc7d2e4,roughness:0.5,metalness:0.3});
+let blockGeo=null;
+
+function buildBlock(k){
+while(blockGroup.children.length)blockGroup.remove(blockGroup.children[0]);
+if(blockGeo)blockGeo.dispose();
+const step=BLOCK/k,gap=k>1?step*0.16:0,c=step-gap;
+blockGeo=new THREE.BoxGeometry(c,c,c);
+for(let i=0;i<k;i++)for(let j=0;j<k;j++)for(let l=0;l<k;l++){
+const m=new THREE.Mesh(blockGeo,blockMat);
+const jit=k>1?gap*0.25:0;
+m.position.set(-BLOCK/2+step*(i+0.5)+(Math.random()-0.5)*jit,step*(j+0.5),-BLOCK/2+step*(l+0.5)+(Math.random()-0.5)*jit);
+if(k>1)m.rotation.set((Math.random()-0.5)*0.25,(Math.random()-0.5)*0.4,(Math.random()-0.5)*0.25);
+m.castShadow=true;
+m.receiveShadow=true;
+m.userData.info='solid';
+blockGroup.add(m);
+}
+S.pieces=k*k*k;
+blockPop=1;
+}
+
+const matA=new THREE.MeshStandardMaterial({color:0x38bdf8,emissive:0x0b6fa0,emissiveIntensity:0.4,roughness:0.25,metalness:0.1});
+const matB=new THREE.MeshStandardMaterial({color:0xfbbf24,emissive:0x8a5a00,emissiveIntensity:0.4,roughness:0.25,metalness:0.1});
+const matP=new THREE.MeshStandardMaterial({color:0x34d399,emissive:0x0a6b4a,emissiveIntensity:0.5,roughness:0.2,metalness:0.1});
+const sphereGeo=new THREE.SphereGeometry(1,28,20);
+const RAD=[0.32,0.3,0.4];
+const particles=[];
+const particleGroup=new THREE.Group();
+labGroup.add(particleGroup);
+const fxGroup=new THREE.Group();
+labGroup.add(fxGroup);
+const effects=[];
+const tmp=new THREE.Vector3();
+const tmp2=new THREE.Vector3();
+const Yaxis=new THREE.Vector3(0,1,0);
+
+function speedTarget(){return 1.4+S.heat/100*5.2;}
+
+function setParticleType(p,type){
+p.type=type;
+p.r=RAD[type];
+p.mesh.material=type===0?matA:type===1?matB:matP;
+p.mesh.userData.info=type===0?'A':type===1?'B':'P';
+p.mesh.scale.setScalar(p.r);
+}
+
+function inBlock(pos,r){
+const cx=Math.max(-BLOCK/2,Math.min(BLOCK/2,pos.x)),cy=Math.max(0,Math.min(BLOCK,pos.y)),cz=Math.max(-BLOCK/2,Math.min(BLOCK/2,pos.z));
+return Math.hypot(pos.x-cx,pos.y-cy,pos.z-cz)<r+0.15;
+}
+
+function initParticles(){
+while(particleGroup.children.length)particleGroup.remove(particleGroup.children[0]);
+particles.length=0;
+for(let i=0;i<NP;i++){
+const mesh=new THREE.Mesh(sphereGeo,matA);
+mesh.castShadow=true;
+const p={mesh,v:new THREE.Vector3(),type:0,r:0.3,pop:0};
+setParticleType(p,i%2);
+let tries=0;
+do{
+mesh.position.set((Math.random()-0.5)*(W-1.4),0.5+Math.random()*(Hcur-1.2),(Math.random()-0.5)*(D-1.4));
+tries++;
+}while(inBlock(mesh.position,p.r+0.2)&&tries<40);
+p.v.set(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize().multiplyScalar(speedTarget());
+particles.push(p);
+particleGroup.add(mesh);
+}
+S.doneTimer=0;
+}
+
+function addEffect(pos){
+const mat=new THREE.MeshBasicMaterial({color:0x5eead4,transparent:true,opacity:0.95,side:THREE.DoubleSide,depthWrite:false});
+const m=new THREE.Mesh(new THREE.RingGeometry(0.28,0.4,40),mat);
+m.position.copy(pos);
+fxGroup.add(m);
+effects.push({m,t:0});
+}
+
+function updateEffects(dt){
+for(let i=effects.length-1;i>=0;i--){
+const e=effects[i];
+e.t+=dt/0.7;
+e.m.scale.setScalar(1+e.t*5);
+e.m.material.opacity=Math.max(0,0.95*(1-e.t));
+e.m.quaternion.copy(camera.quaternion);
+if(e.t>=1){
+fxGroup.remove(e.m);
+e.m.geometry.dispose();
+e.m.material.dispose();
+effects.splice(i,1);
+}
+}
+}
+
+function model(){
+const h=0.25+S.heat/100*1.75,p=0.5+S.pressure/100*1.5,s=0.35+S.surface/100*1.65;
+return{h,p,s,rate:h*p*s};
+}
+
+function physics(dt){
+const m=model();
+const prob=Math.min(0.9,0.13*m.h*m.s);
+const target=speedTarget();
+const hx=W/2,hz=D/2;
+for(const p of particles){
+const sp=p.v.length()||1;
+p.v.multiplyScalar((sp+(target-sp)*Math.min(1,dt*3))/sp);
+p.mesh.position.addScaledVector(p.v,dt);
+const pos=p.mesh.position,r=p.r;
+if(pos.x<-hx+r){pos.x=-hx+r;p.v.x=Math.abs(p.v.x);}
+if(pos.x>hx-r){pos.x=hx-r;p.v.x=-Math.abs(p.v.x);}
+if(pos.z<-hz+r){pos.z=-hz+r;p.v.z=Math.abs(p.v.z);}
+if(pos.z>hz-r){pos.z=hz-r;p.v.z=-Math.abs(p.v.z);}
+if(pos.y<r){pos.y=r;p.v.y=Math.abs(p.v.y);}
+if(pos.y>Hcur-r){pos.y=Hcur-r;p.v.y=-Math.abs(p.v.y);}
+const cx=Math.max(-BLOCK/2,Math.min(BLOCK/2,pos.x)),cy=Math.max(0,Math.min(BLOCK,pos.y)),cz=Math.max(-BLOCK/2,Math.min(BLOCK/2,pos.z));
+tmp.set(pos.x-cx,pos.y-cy,pos.z-cz);
+const d=tmp.length();
+if(d<r){
+if(d<1e-5)tmp.set(0,1,0);else tmp.divideScalar(d);
+pos.addScaledVector(tmp,r-d);
+const vn=p.v.dot(tmp);
+if(vn<0)p.v.addScaledVector(tmp,-2*vn);
+}
+}
+for(let i=0;i<particles.length;i++){
+for(let j=i+1;j<particles.length;j++){
+const a=particles[i],b=particles[j];
+tmp.subVectors(a.mesh.position,b.mesh.position);
+const dist=tmp.length(),minD=a.r+b.r;
+if(dist<minD&&dist>1e-5){
+tmp.divideScalar(dist);
+const push=(minD-dist)/2;
+a.mesh.position.addScaledVector(tmp,push);
+b.mesh.position.addScaledVector(tmp,-push);
+tmp2.subVectors(a.v,b.v);
+const vn=tmp2.dot(tmp);
+if(vn<0){
+a.v.addScaledVector(tmp,-vn);
+b.v.addScaledVector(tmp,vn);
+if(((a.type===0&&b.type===1)||(a.type===1&&b.type===0))&&Math.random()<prob){
+setParticleType(a,2);
+setParticleType(b,2);
+a.pop=1;
+b.pop=1;
+S.collisions++;
+tmp2.addVectors(a.mesh.position,b.mesh.position).multiplyScalar(0.5);
+addEffect(tmp2);
+}
+}
+}
+}
+}
+}
+
+const bondGeo=new THREE.CylinderGeometry(0.14,0.14,1,18);
+const bondMat=new THREE.MeshStandardMaterial({color:0xe3efff,roughness:0.3,metalness:0.2});
+const molGroup=new THREE.Group();
+molGroup.position.y=2.9;
+molGroup.visible=false;
+scene.add(molGroup);
+const molLight=new THREE.PointLight(0xfff1b8,0,14);
+molLight.position.set(0,0,3);
+molGroup.add(molLight);
+
+function makeLabel(text){
+const c=document.createElement('canvas');
+c.width=128;
+c.height=128;
+const x=c.getContext('2d');
+x.font='bold 84px Prompt, Tahoma, sans-serif';
+x.textAlign='center';
+x.textBaseline='middle';
+x.fillStyle='#06223a';
+x.fillText(text,64,70);
+const t=new THREE.CanvasTexture(c);
+const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));
+s.scale.setScalar(0.9);
+s.renderOrder=10;
+return s;
+}
+
+const atomDefs=[
+{el:'H',s:[-5.7,2.7,0],e:[-4.2,-0.4,0],ph:1},
+{el:'H',s:[-4.3,2.7,0],e:[-2.2,-0.4,0],ph:-1},
+{el:'H',s:[4.3,2.7,0],e:[2.2,-0.4,0],ph:1},
+{el:'H',s:[5.7,2.7,0],e:[4.2,-0.4,0],ph:-1},
+{el:'O',s:[-0.8,0,0],e:[-3.2,-1.2,0],ph:-1},
+{el:'O',s:[0.8,0,0],e:[3.2,-1.2,0],ph:1}
+];
+const atoms=atomDefs.map(d=>{
+const isH=d.el==='H';
+const mesh=new THREE.Mesh(new THREE.SphereGeometry(isH?0.55:0.88,40,28),new THREE.MeshStandardMaterial({color:isH?0xb7e4ff:0xff6b6b,emissive:isH?0x2b6a99:0x8a1f2b,emissiveIntensity:0.35,roughness:0.28,metalness:0.1}));
+mesh.castShadow=true;
+mesh.userData.info=d.el;
+mesh.add(makeLabel(d.el));
+molGroup.add(mesh);
+return{mesh,s:new THREE.Vector3(...d.s),e:new THREE.Vector3(...d.e),ph:d.ph,el:d.el};
+});
+const reactBonds=[[0,1],[2,3],[4,5]].map(p=>{const m=new THREE.Mesh(bondGeo,bondMat);m.castShadow=true;molGroup.add(m);return{a:p[0],b:p[1],mesh:m};});
+const prodBonds=[[4,0],[4,1],[5,2],[5,3]].map(p=>{const m=new THREE.Mesh(bondGeo,bondMat);m.castShadow=true;molGroup.add(m);return{a:p[0],b:p[1],mesh:m};});
+
+function ss(a,b,x){const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);}
+
+function setBond(b,t){
+const pa=atoms[b.a].mesh.position,pb=atoms[b.b].mesh.position;
+tmp.subVectors(pb,pa);
+const len=tmp.length();
+if(t<0.03||len<1e-4){b.mesh.visible=false;return;}
+b.mesh.visible=true;
+b.mesh.position.copy(pa).addScaledVector(tmp,0.5);
+b.mesh.quaternion.setFromUnitVectors(Yaxis,tmp.normalize());
+b.mesh.scale.set(t,len,t);
+}
+
+function updateMol(){
+const p=S.molP;
+const e=ss(0.12,0.88,p);
+const arc=Math.sin(Math.PI*e);
+atoms.forEach((a,i)=>{
+a.mesh.position.lerpVectors(a.s,a.e,e);
+a.mesh.position.z+=arc*1.3*a.ph;
+a.mesh.position.y+=arc*0.35*(i%2?1:-1);
+a.mesh.scale.setScalar(1+0.1*arc);
+});
+reactBonds.forEach(b=>setBond(b,1-ss(0.3,0.5,e)));
+prodBonds.forEach(b=>setBond(b,ss(0.5,0.72,e)));
+molLight.intensity=arc*arc*2.2;
+}
+
+function updateMolUI(){
+const p=S.molP;
+const idx=p<0.35?0:p<0.65?1:2;
+for(let i=0;i<3;i++)$('#chip'+i).classList.toggle('on',i===idx);
+$('#molVal').textContent=Math.round(p*100)+'%';
+const sl=$('#molSlider');
+if(document.activeElement!==sl)sl.value=Math.round(p*100);
+sl.style.setProperty('--v',Math.round(p*100)+'%');
+}
+
+const INFO={
+heater:{icon:'🔥',title:'แหล่งความร้อน',tag:'ตัวแปร: อุณหภูมิ',color:'#ff8a4c',body:'เมื่อให้ความร้อน อนุภาคจะได้รับพลังงานมากขึ้น เคลื่อนที่เร็วขึ้น ชนกันถี่ขึ้นและแรงขึ้น จึงมีโอกาสเกิดการชนที่มีประสิทธิผลมากขึ้น',tip:'ลองเลื่อนแถบความร้อนไปทางขวา แล้วดูความเร็วของอนุภาคและสีของแผ่นความร้อน'},
+piston:{icon:'🗜️',title:'ฝาลูกสูบ',tag:'ตัวแปร: ความดัน (แก๊ส)',color:'#ffd166',body:'การดันฝาลงทำให้ปริมาตรลดลง อนุภาคแก๊สจำนวนเท่าเดิมจึงอยู่ใกล้กันมากขึ้นและชนกันบ่อยขึ้น',tip:'เพิ่มความดันแล้วสังเกตว่าฝาเลื่อนลงและอนุภาคแออัดขึ้น'},
+solid:{icon:'🧊',title:'สารของแข็ง',tag:'ตัวแปร: พื้นที่ผิวสัมผัส',color:'#5eead4',body:'เมื่อบดหรือแบ่งก้อนให้เล็กลง ปริมาตรรวมเท่าเดิมแต่พื้นที่ผิวรวมเพิ่มขึ้น ทำให้สัมผัสกับสารอื่นได้มากขึ้น ปฏิกิริยาจึงมักเร็วขึ้น',tip:'เลื่อนแถบพื้นที่ผิวเพื่อเปลี่ยนจากก้อนใหญ่เป็นผงละเอียด'},
+A:{icon:'🔵',title:'อนุภาค A (สีฟ้า)',tag:'สารตั้งต้นชนิดที่ 1',color:'#38bdf8',body:'สารตั้งต้นคือสารที่มีอยู่ก่อนเกิดปฏิกิริยา เมื่อชนกับอนุภาค B ด้วยพลังงานและทิศทางที่เหมาะสมจึงจะเกิดปฏิกิริยา',tip:'สังเกตวงแหวนสีเขียวที่เด้งออกมาเมื่อเกิดการชนที่มีประสิทธิผล'},
+B:{icon:'🟡',title:'อนุภาค B (สีเหลือง)',tag:'สารตั้งต้นชนิดที่ 2',color:'#fbbf24',body:'สารตั้งต้นอีกชนิดหนึ่ง การชนกันของอนุภาคทุกครั้งไม่ได้ทำให้เกิดปฏิกิริยา ต้องเป็นการชนที่มีประสิทธิผลเท่านั้น',tip:'ลองเพิ่มความร้อนแล้วนับว่าจำนวนการชนที่มีประสิทธิผลเพิ่มเร็วขึ้นหรือไม่'},
+P:{icon:'🟢',title:'สารผลิตภัณฑ์',tag:'สารที่เกิดขึ้นใหม่',color:'#34d399',body:'เมื่ออนุภาค A ชนกับ B อย่างมีประสิทธิผล จะเกิดสารใหม่ที่เป็นอนุภาคสีเขียว ในแบบจำลองนี้ผลิตภัณฑ์จะไม่ทำปฏิกิริยาต่อ',tip:'ดูแถบความคืบหน้าของปฏิกิริยาที่แผงด้านขวา'},
+H:{icon:'⚪',title:'อะตอมไฮโดรเจน (H)',tag:'ธาตุไฮโดรเจน',color:'#7dd3fc',body:'ตัวอย่างนี้มีไฮโดรเจน 4 อะตอม จับกันเป็นโมเลกุล H₂ จำนวน 2 โมเลกุล เมื่อเกิดปฏิกิริยา อะตอม H จะไปสร้างพันธะใหม่กับอะตอม O',tip:'เลื่อนแถบความคืบหน้าเพื่อดู H เคลื่อนที่ไปจับกับ O'},
+O:{icon:'🔴',title:'อะตอมออกซิเจน (O)',tag:'ธาตุออกซิเจน',color:'#ff6b6b',body:'ตัวอย่างนี้มีออกซิเจน 2 อะตอม จับกันเป็นโมเลกุล O₂ เมื่อเกิดปฏิกิริยา พันธะ O–O แตกออก แล้วแต่ละอะตอมจับกับ H สองอะตอมเป็นน้ำ',tip:'นับอะตอม O ก่อนและหลังปฏิกิริยา จะได้ 2 อะตอมเท่ากัน'},
+O2:{icon:'💨',title:'โมเลกุลออกซิเจน (O₂)',tag:'สารตั้งต้น',color:'#ff8fa3',body:'โมเลกุลที่ O สองอะตอมเชื่อมกันด้วยพันธะ ในปฏิกิริยานี้พันธะเดิมระหว่างอะตอม O ต้องแตกออกก่อน',tip:'กดเล่นภาพเคลื่อนไหวแล้วดูพันธะระหว่าง O ค่อย ๆ หายไป'},
+H2O:{icon:'💧',title:'โมเลกุลน้ำ (H₂O)',tag:'สารผลิตภัณฑ์',color:'#5eead4',body:'น้ำ 1 โมเลกุลประกอบด้วย O 1 อะตอมและ H 2 อะตอม เกิดจากพันธะใหม่ที่สร้างขึ้นหลังพันธะเดิมแตก จำนวนอะตอมแต่ละธาตุยังคงเท่าเดิม',tip:'เทียบจำนวนอะตอมก่อนและหลังในตารางด้านขวา'}
+};
+
+const HOT={
+lab:[
+{id:'heater',label:'ความร้อน',icon:'🔥',anchor:()=>tmp.set(0,-0.3,D/2+0.55)},
+{id:'piston',label:'ความดัน',icon:'🗜️',anchor:()=>tmp.set(0,Hcur+3.9,0)},
+{id:'solid',label:'พื้นที่ผิว',icon:'🧊',anchor:()=>tmp.set(0,BLOCK+0.7,0)},
+{id:'A',label:'อนุภาค A',icon:'🔵',anchor:()=>{const p=particles.find(q=>q.type===0);return p?tmp.copy(p.mesh.position).add(new THREE.Vector3(0,0.6,0)):null;}},
+{id:'B',label:'อนุภาค B',icon:'🟡',anchor:()=>{const p=particles.find(q=>q.type===1);return p?tmp.copy(p.mesh.position).add(new THREE.Vector3(0,0.6,0)):null;}},
+{id:'P',label:'ผลิตภัณฑ์',icon:'🟢',anchor:()=>{const p=particles.find(q=>q.type===2);return p?tmp.copy(p.mesh.position).add(new THREE.Vector3(0,0.7,0)):null;}}
+],
+mol:[
+{id:'H',label:'ไฮโดรเจน',icon:'⚪',anchor:()=>tmp.copy(atoms[0].mesh.getWorldPosition(new THREE.Vector3())).add(new THREE.Vector3(0,0.95,0))},
+{id:'O',label:'ออกซิเจน',icon:'🔴',anchor:()=>tmp.copy(atoms[5].mesh.getWorldPosition(new THREE.Vector3())).add(new THREE.Vector3(0,1.3,0))},
+{id:'O2',label:'โมเลกุล O₂',icon:'💨',visible:()=>S.molP<0.4,anchor:()=>tmp.set(0,2.9-1.5,0)},
+{id:'H2O',label:'โมเลกุลน้ำ',icon:'💧',visible:()=>S.molP>0.65,anchor:()=>tmp.copy(atoms[4].mesh.getWorldPosition(new THREE.Vector3())).add(new THREE.Vector3(0,-1.5,0))}
+]
+};
+
+const hsLayer=$('#hotspots');
+const hsEls={};
+Object.keys(HOT).forEach(mode=>{
+HOT[mode].forEach(h=>{
+const b=document.createElement('button');
+b.className='hotspot';
+b.style.setProperty('--hc',INFO[h.id].color);
+b.setAttribute('aria-label',INFO[h.id].title);
+b.innerHTML='<span class="dot">'+h.icon+'</span><span class="tag">'+h.label+'</span>';
+b.addEventListener('click',ev=>{ev.stopPropagation();showInfo(h.id);});
+hsLayer.appendChild(b);
+hsEls[mode+':'+h.id]=b;
+});
+});
+
+const proj=new THREE.Vector3();
+function updateHotspots(){
+const w=stage.clientWidth,h=stage.clientHeight;
+Object.keys(HOT).forEach(mode=>{
+HOT[mode].forEach(def=>{
+const el=hsEls[mode+':'+def.id];
+if(mode!==S.mode){el.classList.add('hide');return;}
+const a=def.anchor();
+if(!a||(def.visible&&!def.visible())){el.classList.add('hide');return;}
+proj.copy(a).project(camera);
+if(proj.z>1||proj.z<-1){el.classList.add('hide');return;}
+el.classList.remove('hide');
+const x=(proj.x*0.5+0.5)*w,y=(-proj.y*0.5+0.5)*h;
+el.style.transform='translate('+(x-16).toFixed(1)+'px,'+(y-16).toFixed(1)+'px)';
+});
+});
+}
+
+const card=$('#infocard');
+let activeInfo=null;
+function showInfo(key){
+const d=INFO[key];
+if(!d)return;
+activeInfo=key;
+card.style.setProperty('--ac',d.color);
+$('#icIcon').textContent=d.icon;
+$('#icTitle').textContent=d.title;
+$('#icTag').textContent=d.tag;
+$('#icBody').textContent=d.body;
+$('#icTip').textContent='💡 '+d.tip;
+card.classList.remove('show');
+void card.offsetWidth;
+card.classList.add('show');
+Object.keys(hsEls).forEach(k=>hsEls[k].classList.toggle('active',k.split(':')[1]===key));
+}
+function hideInfo(){
+card.classList.remove('show');
+activeInfo=null;
+Object.keys(hsEls).forEach(k=>hsEls[k].classList.remove('active'));
+}
+$('#icClose').addEventListener('click',hideInfo);
+
+const ray=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+let downX=0,downY=0;
+renderer.domElement.addEventListener('pointerdown',e=>{downX=e.clientX;downY=e.clientY;});
+renderer.domElement.addEventListener('pointerup',e=>{
+if(Math.hypot(e.clientX-downX,e.clientY-downY)>5)return;
+const r=renderer.domElement.getBoundingClientRect();
+mouse.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+ray.setFromCamera(mouse,camera);
+const list=[];
+const root=S.mode==='lab'?labGroup:molGroup;
+root.traverse(o=>{if(o.isMesh&&o.userData.info&&o.visible)list.push(o);});
+const hit=ray.intersectObjects(list,false)[0];
+if(hit)showInfo(hit.object.userData.info);
+else hideInfo();
+});
+
+function flyTo(pos,target){
+tween={t:0,p0:camera.position.clone(),t0:controls.target.clone(),p1:pos.clone(),t1:target.clone()};
+}
+
+function setMode(mode){
+S.mode=mode;
+labGroup.visible=mode==='lab';
+molGroup.visible=mode==='mol';
+hideInfo();
+flyTo(PRESET[mode].pos,PRESET[mode].target);
+}
+
+function setTab(tab){
+$$('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.tab===tab?'true':'false'));
+$$('.sec').forEach(s=>s.classList.toggle('on',s.id==='tab-'+tab));
+const mode=tab==='atom'?'mol':'lab';
+if(mode!==S.mode)setMode(mode);
+$('.p-body').scrollTop=0;
+}
+$$('.tab').forEach(t=>t.addEventListener('click',()=>setTab(t.dataset.tab)));
+
+const sliders={heat:$('#heat'),pressure:$('#pressure'),surface:$('#surface')};
+function surfaceNote(k){return k===1?'ก้อนใหญ่ 1 ชิ้น':k===2?'แบ่งเป็น 8 ชิ้น':k===3?'แบ่งเป็น 27 ชิ้น':'ผงละเอียด 64 ชิ้น';}
+
+function updateUI(){
+Object.keys(sliders).forEach(k=>{
+S[k]=+sliders[k].value;
+$('#'+k+'Val').textContent=S[k]+'%';
+sliders[k].style.setProperty('--v',S[k]+'%');
+});
+Htarget=7.4-S.pressure/100*3.8;
+const k=1+Math.round(S.surface/100*3);
+if(k!==blockK){blockK=k;buildBlock(k);}
+$('#surfaceNote').textContent=surfaceNote(k);
+const m=model();
+const label=m.rate<1.3?'ช้า':m.rate<3.2?'กลาง':m.rate<5.2?'เร็ว':'เร็วมาก';
+$('#rate').textContent=label;
+$('#time').textContent=(100/m.rate).toFixed(0)+' หน่วย';
+$('#fHeat').style.width=(m.h/2*100)+'%';
+$('#fPress').style.width=(m.p/2*100)+'%';
+$('#fSurf').style.width=(m.s/2*100)+'%';
+$('#fHeatV').textContent='×'+m.h.toFixed(1);
+$('#fPressV').textContent='×'+m.p.toFixed(1);
+$('#fSurfV').textContent='×'+m.s.toFixed(1);
+const hints=[];
+if(S.heat>=70)hints.push('อุณหภูมิสูง: อนุภาคเคลื่อนที่เร็วและมีโอกาสชนอย่างมีประสิทธิผลมากขึ้น');
+else if(S.heat<=30)hints.push('อุณหภูมิต่ำ: อนุภาคเคลื่อนที่ช้าลง โดยทั่วไปปฏิกิริยาจึงช้าลง');
+if(S.pressure>=70)hints.push('ความดันสูง: ฝาลูกสูบเลื่อนลง อนุภาคอยู่ใกล้กันและชนบ่อยขึ้น');
+else if(S.pressure<=30)hints.push('ความดันต่ำ: ปริมาตรมาก อนุภาคแก๊สห่างกันขึ้น จึงมีโอกาสชนกันน้อยลง');
+if(S.surface>=70)hints.push('พื้นที่ผิวมาก: ของแข็งถูกบดเป็นชิ้นเล็ก มีบริเวณสัมผัสระหว่างสารมากขึ้น');
+else if(S.surface<=30)hints.push('พื้นที่ผิวน้อย: เป็นก้อนใหญ่ บริเวณที่สารสัมผัสกันมีน้อยลง');
+$('#hint').textContent=hints.length?hints.join(' '):'ค่าตัวแปรอยู่ระดับกลาง ลองเพิ่มหรือลดทีละตัวเพื่อเปรียบเทียบผล';
+}
+Object.values(sliders).forEach(s=>s.addEventListener('input',updateUI));
+
+function updateProgress(){
+const done=particles.filter(p=>p.type===2).length/NP;
+const pct=Math.round(done*100);
+$('#progBar').style.width=pct+'%';
+$('#progText').textContent=pct+'%';
+$('#collisions').textContent=S.collisions;
+return done;
+}
+
+function setRunning(v){
+S.running=v;
+$('#pause').textContent=v?'⏸ หยุดภาพเคลื่อนไหว':'▶ เล่นภาพเคลื่อนไหว';
+$('#toolPause').textContent=v?'⏸':'▶';
+}
+$('#pause').addEventListener('click',()=>setRunning(!S.running));
+$('#toolPause').addEventListener('click',()=>setRunning(!S.running));
+function resetLab(){
+sliders.heat.value=50;
+sliders.pressure.value=50;
+sliders.surface.value=50;
+S.collisions=0;
+setRunning(true);
+updateUI();
+Hcur=Htarget;
+initParticles();
+hideInfo();
+}
+$('#reset').addEventListener('click',resetLab);
+$('#toolView').addEventListener('click',()=>flyTo(PRESET[S.mode].pos,PRESET[S.mode].target));
+$('#toolFull').addEventListener('click',()=>{
+try{
+if(document.fullscreenElement)document.exitFullscreen();
+else if(stage.requestFullscreen)stage.requestFullscreen();
+}catch(err){}
+});
+
+$('#molSlider').addEventListener('input',e=>{
+S.molP=+e.target.value/100;
+S.molPlay=false;
+$('#molPlay').textContent='▶ เล่นภาพเคลื่อนไหว';
+updateMolUI();
+});
+$('#molPlay').addEventListener('click',()=>{
+S.molPlay=!S.molPlay;
+if(S.molPlay&&S.molP>=1){S.molP=0;S.molDir=1;}
+$('#molPlay').textContent=S.molPlay?'⏸ หยุดชั่วคราว':'▶ เล่นภาพเคลื่อนไหว';
+});
+$('#molReset').addEventListener('click',()=>{
+S.molP=0;
+S.molPlay=false;
+S.molDir=1;
+$('#molPlay').textContent='▶ เล่นภาพเคลื่อนไหว';
+updateMolUI();
+});
+
+const QUIZ=[
+{q:'สารที่มีอยู่ก่อนเริ่มเกิดปฏิกิริยาเรียกว่าอะไร?',o:['สารผลิตภัณฑ์','สารตั้งต้น','ตัวเร่งปฏิกิริยา'],a:1,e:'สารตั้งต้นคือสารที่มีอยู่ก่อนเกิดปฏิกิริยา'},
+{q:'โดยทั่วไป เมื่อเพิ่มอุณหภูมิ อนุภาคจะเป็นอย่างไร?',o:['เคลื่อนที่เร็วขึ้น','หยุดเคลื่อนที่','อะตอมหายไป'],a:0,e:'อุณหภูมิสูงขึ้นทำให้อนุภาคมีพลังงานจลน์เฉลี่ยมากขึ้นและเคลื่อนที่เร็วขึ้น'},
+{q:'เพราะเหตุใดการบดของแข็งให้เป็นชิ้นเล็กจึงมักทำให้ปฏิกิริยาเร็วขึ้น?',o:['ทำให้มวลเพิ่มขึ้น','ทำให้เกิดอะตอมใหม่','เพิ่มพื้นที่ผิวที่สัมผัสกับสารอื่น'],a:2,e:'การบดเพิ่มพื้นที่ผิวสัมผัสที่สารสามารถทำปฏิกิริยากันได้'},
+{q:'ข้อใดอธิบายการจัดเรียงตัวใหม่ของอะตอมได้ถูกต้อง?',o:['อะตอมทั้งหมดหายไปแล้วเกิดใหม่','อะตอมจัดเรียงใหม่และเกิดพันธะใหม่ โดยจำนวนอะตอมแต่ละธาตุคงเดิม','สารตั้งต้นเปลี่ยนเป็นผลิตภัณฑ์โดยไม่มีการเปลี่ยนแปลงระดับอนุภาค'],a:1,e:'อะตอมถูกจัดเรียงใหม่ พันธะเดิมบางส่วนแตกและพันธะใหม่เกิดขึ้น แต่จำนวนอะตอมแต่ละธาตุคงเดิม'},
+{q:'ในระบบแก๊สที่ปริมาตรคงที่ การเพิ่มความดันมักช่วยเพิ่มอัตราปฏิกิริยาได้อย่างไร?',o:['ทำให้อนุภาคอยู่ใกล้กันและชนกันบ่อยขึ้น','ทำให้จำนวนอะตอมเพิ่มขึ้น','ทำให้พลังงานทุกครั้งของการชนหายไป'],a:0,e:'เมื่อปริมาตรแก๊สคงที่ ความดันที่สูงขึ้นมักสัมพันธ์กับอนุภาคที่อยู่ใกล้กันและการชนที่ถี่ขึ้น'}
+];
+const quizForm=$('#quizForm');
+function buildQuiz(){
+quizForm.innerHTML=QUIZ.map((x,i)=>'<fieldset class="qa" id="qa'+i+'"><legend>'+(i+1)+'. '+x.q+'</legend>'+x.o.map((t,j)=>'<label class="opt" data-j="'+j+'"><input type="radio" name="q'+i+'" value="'+j+'"><span class="mark"></span><span>'+t+'</span></label>').join('')+'<div class="exp" id="exp'+i+'"></div></fieldset>').join('');
+}
+function selected(i){
+const s=quizForm.querySelector('input[name="q'+i+'"]:checked');
+return s?+s.value:-1;
+}
+function markQuiz(withScore){
+let score=0;
+QUIZ.forEach((x,i)=>{
+const sel=selected(i);
+const opts=$$('#qa'+i+' .opt');
+opts.forEach(o=>{o.classList.remove('correct','wrong');});
+opts[x.a].classList.add('correct');
+let verdict='';
+if(withScore){
+if(sel===x.a){score++;verdict='<b style="color:#5eead4">✓ ถูกต้อง</b> — ';}
+else{
+if(sel>=0)opts[sel].classList.add('wrong');
+verdict=sel>=0?'<b style="color:#fb7185">✗ ยังไม่ถูก</b> — ':'<b style="color:#ffd166">• ยังไม่ได้ตอบ</b> — ';
+}
+}
+const exp=$('#exp'+i);
+exp.innerHTML=verdict+'เฉลย: <b>'+x.o[x.a]+'</b><br>'+x.e;
+exp.classList.add('show');
+});
+const sc=$('#score');
+if(withScore){
+$('#scoreNum').textContent=score+'/5';
+$('#ring').style.setProperty('--p',score*20);
+$('#scoreTitle').textContent=score===5?'🎉 เยี่ยมมาก! ตอบถูกทุกข้อ':score>=3?'👍 ทำได้ดี':'💪 ลองทบทวนอีกครั้ง';
+$('#scoreMsg').textContent=score>=3?'คุณเข้าใจแนวคิดเรื่องอัตราการเกิดปฏิกิริยาและการจัดเรียงตัวใหม่ของอะตอมแล้ว':'กลับไปทดลองปรับตัวแปรในห้องทดลองและดูแอนิเมชันอะตอม แล้วลองทำแบบทดสอบใหม่';
+sc.classList.add('show');
+}else sc.classList.remove('show');
+}
+$('#qCheck').addEventListener('click',()=>{markQuiz(true);$('.p-body').scrollTop=0;});
+$('#qShow').addEventListener('click',()=>markQuiz(false));
+$('#qReset').addEventListener('click',()=>{buildQuiz();$('#score').classList.remove('show');$('.p-body').scrollTop=0;});
+
+$('#legend').innerHTML='<div><i style="background:#38bdf8"></i>อนุภาค A (สารตั้งต้น)</div><div><i style="background:#fbbf24"></i>อนุภาค B (สารตั้งต้น)</div><div><i style="background:#34d399"></i>สารผลิตภัณฑ์</div>';
+
+function resize(){
+const w=stage.clientWidth,h=stage.clientHeight;
+if(!w||!h)return;
+renderer.setSize(w,h,false);
+camera.aspect=w/h;
+camera.updateProjectionMatrix();
+}
+if(window.ResizeObserver)new ResizeObserver(resize).observe(stage);
+window.addEventListener('resize',resize);
+
+const clock=new THREE.Clock();
+const heatCold=new THREE.Color(0x2a5f8f),heatHot=new THREE.Color(0xff5a1f);
+
+function frame(){
+requestAnimationFrame(frame);
+const dt=Math.min(clock.getDelta(),0.04);
+const heatK=S.heat/100;
+dust.rotation.y+=dt*0.02;
+
+if(tween){
+tween.t=Math.min(1,tween.t+dt/1.1);
+const e=tween.t*tween.t*(3-2*tween.t);
+camera.position.lerpVectors(tween.p0,tween.p1,e);
+controls.target.lerpVectors(tween.t0,tween.t1,e);
+if(tween.t>=1)tween=null;
+}
+
+if(S.mode==='lab'){
+Hcur+=(Htarget-Hcur)*Math.min(1,dt*4);
+wall.scale.y=Hcur;
+wall.position.y=Hcur/2;
+wallEdges.scale.y=Hcur;
+wallEdges.position.y=Hcur/2;
+lidGroup.position.y=Hcur;
+heaterMat.emissive.lerpColors(heatCold,heatHot,heatK);
+heaterMat.color.copy(heaterMat.emissive).multiplyScalar(0.6);
+heaterMat.emissiveIntensity=0.35+heatK*1.3;
+glow.intensity=heatK*2.2;
+matA.emissiveIntensity=0.25+heatK*0.9;
+matB.emissiveIntensity=0.25+heatK*0.9;
+matP.emissiveIntensity=0.35+heatK*0.6;
+if(blockPop>0){
+blockPop=Math.max(0,blockPop-dt*3.5);
+blockGroup.scale.setScalar(1-0.12*blockPop);
+}
+if(S.running){
+physics(dt/2);
+physics(dt/2);
+particles.forEach(p=>{
+if(p.pop>0){
+p.pop=Math.max(0,p.pop-dt*2.5);
+p.mesh.scale.setScalar(p.r*(1+0.5*p.pop));
+}
+});
+}
+updateEffects(S.running?dt:0);
+const done=updateProgress();
+if(done>=1){
+S.doneTimer+=dt;
+if(S.doneTimer>3){
+initParticles();
+$('#hint').textContent='ปฏิกิริยาสมบูรณ์แล้ว เริ่มรอบใหม่ด้วยสารตั้งต้นชุดใหม่';
+}
+}
+}else{
+if(S.molPlay){
+S.molP+=S.molDir*dt*0.14;
+if(S.molP>=1){S.molP=1;S.molDir=-1;}
+if(S.molP<=0){S.molP=0;S.molDir=1;}
+updateMolUI();
+}
+updateMol();
+}
+
+controls.update();
+renderer.render(scene,camera);
+updateHotspots();
+}
+
+buildQuiz();
+updateUI();
+Hcur=Htarget;
+initParticles();
+updateMol();
+updateMolUI();
+resize();
+frame();
+setTimeout(()=>loading.classList.add('done'),400);
+setTimeout(()=>showInfo('heater'),1400);
+})();
+</script>
+</body>
+</html>
